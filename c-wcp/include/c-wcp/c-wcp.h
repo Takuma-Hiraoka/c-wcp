@@ -31,7 +31,7 @@ namespace cwcp {
     bool OptimizeTrajectory = false;
 
     CWCPParam() {
-      gikParam.range = 0.05;
+      gikParam.range = 0.5;
       gikParam.delta = 0.2;
       gikParam.timeout = 20;
       gikParam.maxTranslation = 3;
@@ -45,7 +45,7 @@ namespace cwcp {
       gikParam.pikParam.checkFinalState = true;
       gikParam.pikParam.calcVelocity = false;
       gikParam.pikParam.convergeThre = 5e-2;
-      gikParam.pikParam.pathOutputLoop = 5;
+      gikParam.pikParam.pathOutputLoop = 2;
       pikParam = gikParam.pikParam;
       toParam.shortcutThre=4e-2;
     };

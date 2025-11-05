@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>c-wcp_sample</name>
+  <version>0.0.0</version>
+  <description>The c-wcp_sample package</description>
+
+  <maintainer email="t-hiraoka@jsk.imi.i.u-tokyo.ac.jp">Takuma-Hiraoka</maintainer>
+
+  <license>BSD</license>
+
+  <author email="t-hiraoka@jsk.imi.i.u-tokyo.ac.jp">Takuma-Hiraoka</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>c-wcp</depend>
+  <depend>choreonoid</depend>
+  <depend>choreonoid_viewer</depend>
+  <depend>choreonoid_bullet</depend>
+  <depend>choreonoid_cddlib</depend>
+  <depend>ik_constraint2_bullet</depend>
+
+</package>
