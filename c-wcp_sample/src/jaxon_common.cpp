@@ -6,11 +6,13 @@
 #include <choreonoid_bullet/choreonoid_bullet.h>
 #include <choreonoid_cddlib/choreonoid_cddlib.h>
 #include <ik_constraint2_bullet/ik_constraint2_bullet.h>
+#include <ik_constraint2_distance_field/ik_constraint2_distance_field.h>
 
 namespace cwcp_sample{
-  void generateJAXON(std::shared_ptr<cwcp::CWCPParam>& param) {
+  void generateJAXON(cnoid::BodyPtr& robot, std::shared_ptr<cwcp::CWCPParam>& param) {
     cnoid::BodyLoader bodyLoader;
-    cnoid::BodyPtr robot = bodyLoader.load(ros::package::getPath("jvrc_models") + "/JAXON_JVRC/JAXON_JVRCmain.wrl");
+    robot = bodyLoader.load(ros::package::getPath("jvrc_models") + "/JAXON_JVRC/JAXON_JVRCmain.wrl");
+    robot->setName("JAXON");
     if(!robot) std::cerr << "!robot" << std::endl;
     param->bodies.insert(robot);
     std::vector<std::string> contactableLinkNames{
@@ -99,6 +101,18 @@ namespace cwcp_sample{
       param->constraints.push_back(constraint);
     }
 
+    std::unordered_map<cnoid::LinkPtr, std::shared_ptr<btConvexShape> > collisionModels;
+    for(int i=0;i<robot->numLinks();i++){
+      collisionModels[robot->link(i)] = choreonoid_bullet::convertToBulletModel(robot->link(i)->collisionShape());
+    }
+    for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
+      if ((*it) == robot) continue;
+      for(int i=0;i<(*it)->numLinks();i++){
+        if ((*it)->link(i)->name() == "floor") continue; // floorはdistance fieldを、rWall, lWallはbulletを使う
+        collisionModels[(*it)->link(i)] = choreonoid_bullet::convertToBulletModel((*it)->link(i)->collisionShape());
+      }
+    }
+
     // environmental collision
     for (int i=0; i<robot->numLinks(); i++) {
       {
@@ -113,14 +127,34 @@ namespace cwcp_sample{
             (robot->link(i)->name() == "RARM_F_JOINT0") ||
             (robot->link(i)->name() == "RARM_F_JOINT1")) continue;
       }
-      std::shared_ptr<ik_constraint2_distance_field::DistanceFieldCollisionConstraint> constraint = std::make_shared<ik_constraint2_distance_field::DistanceFieldCollisionConstraint>();
-      constraint->A_link() = robot->link(i);
-      constraint->field() = param->field;
-      constraint->tolerance() = 0.02;
-      constraint->precision() = 0.01;
-      constraint->ignoreDistance() = 0.5;
-      constraint->updateBounds();
-      param->constraints.push_back(constraint);
+      {
+        std::shared_ptr<ik_constraint2_distance_field::DistanceFieldCollisionConstraint> constraint = std::make_shared<ik_constraint2_distance_field::DistanceFieldCollisionConstraint>();
+        constraint->A_link() = robot->link(i);
+        constraint->field() = param->field;
+        constraint->tolerance() = 0.02;
+        constraint->precision() = 0.01;
+        constraint->ignoreDistance() = 0.5;
+        constraint->updateBounds();
+        param->constraints.push_back(constraint);
+      }
+      for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
+        if ((*it) == robot) continue;
+        for(int j=0;j<(*it)->numLinks();j++){
+          if ((*it)->link(j)->name() == "floor") continue; // floorはdistance fieldを、rWall, lWallはbulletを使う
+          std::shared_ptr<ik_constraint2_bullet::BulletCollisionConstraint> constraint = std::make_shared<ik_constraint2_bullet::BulletCollisionConstraint>();
+          constraint->A_link() = robot->link(i);
+          constraint->B_link() = (*it)->link(j);
+          constraint->A_link_bulletModel() = constraint->A_link();
+          constraint->A_bulletModel().push_back(collisionModels[constraint->A_link()]);
+          constraint->B_link_bulletModel() = constraint->B_link();
+          constraint->B_bulletModel().push_back(collisionModels[constraint->B_link()]);
+          constraint->tolerance() = 0.02;
+          constraint->precision() = 0.01;
+          constraint->ignoreDistance() = 0.5;
+          constraint->updateBounds();
+          param->constraints.push_back(constraint);
+        }
+      }
     }
 
     // task: self collision
@@ -128,10 +162,6 @@ namespace cwcp_sample{
       std::vector<std::vector<std::string> > pairs {
         std::vector<std::string>{"RLEG_JOINT2","LLEG_JOINT2"}, std::vector<std::string>{"RLEG_JOINT2","LLEG_JOINT3"}, std::vector<std::string>{"RLEG_JOINT2","LLEG_JOINT5"}, std::vector<std::string>{"RLEG_JOINT2","RARM_JOINT3"}, std::vector<std::string>{"RLEG_JOINT2","RARM_JOINT4"}, std::vector<std::string>{"RLEG_JOINT2","RARM_JOINT5"}, std::vector<std::string>{"RLEG_JOINT2","RARM_JOINT6"}, std::vector<std::string>{"RLEG_JOINT2","LARM_JOINT3"}, std::vector<std::string>{"RLEG_JOINT2","LARM_JOINT4"}, std::vector<std::string>{"RLEG_JOINT2","LARM_JOINT5"}, std::vector<std::string>{"RLEG_JOINT2","LARM_JOINT6"}, std::vector<std::string>{"RLEG_JOINT3","LLEG_JOINT2"}, std::vector<std::string>{"RLEG_JOINT3","LLEG_JOINT3"}, std::vector<std::string>{"RLEG_JOINT3","LLEG_JOINT5"}, std::vector<std::string>{"RLEG_JOINT3","RARM_JOINT3"}, std::vector<std::string>{"RLEG_JOINT3","RARM_JOINT4"}, std::vector<std::string>{"RLEG_JOINT3","RARM_JOINT5"}, std::vector<std::string>{"RLEG_JOINT3","RARM_JOINT6"}, std::vector<std::string>{"RLEG_JOINT3","LARM_JOINT3"}, std::vector<std::string>{"RLEG_JOINT3","LARM_JOINT4"}, std::vector<std::string>{"RLEG_JOINT3","LARM_JOINT5"}, std::vector<std::string>{"RLEG_JOINT3","LARM_JOINT6"}, std::vector<std::string>{"RLEG_JOINT5","LLEG_JOINT2"}, std::vector<std::string>{"RLEG_JOINT5","LLEG_JOINT3"}, std::vector<std::string>{"RLEG_JOINT5","LLEG_JOINT5"}, std::vector<std::string>{"RLEG_JOINT5","RARM_JOINT3"}, std::vector<std::string>{"RLEG_JOINT5","RARM_JOINT4"}, std::vector<std::string>{"RLEG_JOINT5","RARM_JOINT5"}, std::vector<std::string>{"RLEG_JOINT5","RARM_JOINT6"}, std::vector<std::string>{"RLEG_JOINT5","LARM_JOINT3"}, std::vector<std::string>{"RLEG_JOINT5","LARM_JOINT4"}, std::vector<std::string>{"RLEG_JOINT5","LARM_JOINT5"}, std::vector<std::string>{"RLEG_JOINT5","LARM_JOINT6"}, std::vector<std::string>{"LLEG_JOINT2","RARM_JOINT3"}, std::vector<std::string>{"LLEG_JOINT2","RARM_JOINT4"}, std::vector<std::string>{"LLEG_JOINT2","RARM_JOINT5"}, std::vector<std::string>{"LLEG_JOINT2","RARM_JOINT6"}, std::vector<std::string>{"LLEG_JOINT2","LARM_JOINT3"}, std::vector<std::string>{"LLEG_JOINT2","LARM_JOINT4"}, std::vector<std::string>{"LLEG_JOINT2","LARM_JOINT5"}, std::vector<std::string>{"LLEG_JOINT2","LARM_JOINT6"}, std::vector<std::string>{"LLEG_JOINT3","RARM_JOINT3"}, std::vector<std::string>{"LLEG_JOINT3","RARM_JOINT4"}, std::vector<std::string>{"LLEG_JOINT3","RARM_JOINT5"}, std::vector<std::string>{"LLEG_JOINT3","RARM_JOINT6"}, std::vector<std::string>{"LLEG_JOINT3","LARM_JOINT3"}, std::vector<std::string>{"LLEG_JOINT3","LARM_JOINT4"}, std::vector<std::string>{"LLEG_JOINT3","LARM_JOINT5"}, std::vector<std::string>{"LLEG_JOINT3","LARM_JOINT6"}, std::vector<std::string>{"LLEG_JOINT5","RARM_JOINT3"}, std::vector<std::string>{"LLEG_JOINT5","RARM_JOINT4"}, std::vector<std::string>{"LLEG_JOINT5","RARM_JOINT5"}, std::vector<std::string>{"LLEG_JOINT5","RARM_JOINT6"}, std::vector<std::string>{"LLEG_JOINT5","LARM_JOINT3"}, std::vector<std::string>{"LLEG_JOINT5","LARM_JOINT4"}, std::vector<std::string>{"LLEG_JOINT5","LARM_JOINT5"}, std::vector<std::string>{"LLEG_JOINT5","LARM_JOINT6"}, std::vector<std::string>{"CHEST_JOINT1","RARM_JOINT2"}, std::vector<std::string>{"CHEST_JOINT1","RARM_JOINT3"}, std::vector<std::string>{"CHEST_JOINT1","RARM_JOINT4"}, std::vector<std::string>{"CHEST_JOINT1","RARM_JOINT5"}, std::vector<std::string>{"CHEST_JOINT1","RARM_JOINT6"}, std::vector<std::string>{"CHEST_JOINT1","LARM_JOINT2"}, std::vector<std::string>{"CHEST_JOINT1","LARM_JOINT3"}, std::vector<std::string>{"CHEST_JOINT1","LARM_JOINT4"}, std::vector<std::string>{"CHEST_JOINT1","LARM_JOINT5"}, std::vector<std::string>{"CHEST_JOINT1","LARM_JOINT6"}, std::vector<std::string>{"HEAD_JOINT1","RARM_JOINT3"}, std::vector<std::string>{"HEAD_JOINT1","RARM_JOINT4"}, std::vector<std::string>{"HEAD_JOINT1","RARM_JOINT5"}, std::vector<std::string>{"HEAD_JOINT1","RARM_JOINT6"}, std::vector<std::string>{"HEAD_JOINT1","LARM_JOINT3"}, std::vector<std::string>{"HEAD_JOINT1","LARM_JOINT4"}, std::vector<std::string>{"HEAD_JOINT1","LARM_JOINT5"}, std::vector<std::string>{"HEAD_JOINT1","LARM_JOINT6"}, std::vector<std::string>{"RARM_JOINT0","LARM_JOINT4"}, std::vector<std::string>{"RARM_JOINT0","LARM_JOINT5"}, std::vector<std::string>{"RARM_JOINT0","LARM_JOINT6"}, std::vector<std::string>{"RARM_JOINT2","LARM_JOINT4"}, std::vector<std::string>{"RARM_JOINT2","LARM_JOINT5"}, std::vector<std::string>{"RARM_JOINT2","LARM_JOINT6"}, std::vector<std::string>{"RARM_JOINT2","WAIST"}, std::vector<std::string>{"RARM_JOINT3","LARM_JOINT3"}, std::vector<std::string>{"RARM_JOINT3","LARM_JOINT4"}, std::vector<std::string>{"RARM_JOINT3","LARM_JOINT5"}, std::vector<std::string>{"RARM_JOINT3","LARM_JOINT6"}, std::vector<std::string>{"RARM_JOINT3","WAIST"}, std::vector<std::string>{"RARM_JOINT4","LARM_JOINT0"}, std::vector<std::string>{"RARM_JOINT4","LARM_JOINT2"}, std::vector<std::string>{"RARM_JOINT4","LARM_JOINT3"}, std::vector<std::string>{"RARM_JOINT4","LARM_JOINT4"}, std::vector<std::string>{"RARM_JOINT4","LARM_JOINT5"}, std::vector<std::string>{"RARM_JOINT4","LARM_JOINT6"}, std::vector<std::string>{"RARM_JOINT4","WAIST"}, std::vector<std::string>{"RARM_JOINT5","LARM_JOINT0"}, std::vector<std::string>{"RARM_JOINT5","LARM_JOINT2"}, std::vector<std::string>{"RARM_JOINT5","LARM_JOINT3"}, std::vector<std::string>{"RARM_JOINT5","LARM_JOINT4"}, std::vector<std::string>{"RARM_JOINT5","LARM_JOINT5"}, std::vector<std::string>{"RARM_JOINT5","LARM_JOINT6"}, std::vector<std::string>{"RARM_JOINT5","WAIST"}, std::vector<std::string>{"RARM_JOINT6","LARM_JOINT0"}, std::vector<std::string>{"RARM_JOINT6","LARM_JOINT2"}, std::vector<std::string>{"RARM_JOINT6","LARM_JOINT3"}, std::vector<std::string>{"RARM_JOINT6","LARM_JOINT4"}, std::vector<std::string>{"RARM_JOINT6","LARM_JOINT5"}, std::vector<std::string>{"RARM_JOINT6","LARM_JOINT6"}, std::vector<std::string>{"RARM_JOINT6","WAIST"}, std::vector<std::string>{"LARM_JOINT2","WAIST"}, std::vector<std::string>{"LARM_JOINT3","WAIST"}, std::vector<std::string>{"LARM_JOINT4","WAIST"}, std::vector<std::string>{"LARM_JOINT5","WAIST"}, std::vector<std::string>{"LARM_JOINT6","WAIST"}, std::vector<std::string>{"RLEG_JOINT2","LARM_JOINT7"}, std::vector<std::string>{"RLEG_JOINT3","LARM_JOINT7"}, std::vector<std::string>{"RLEG_JOINT5","LARM_JOINT7"}, std::vector<std::string>{"LLEG_JOINT2","LARM_JOINT7"}, std::vector<std::string>{"LLEG_JOINT3","LARM_JOINT7"}, std::vector<std::string>{"LLEG_JOINT5","LARM_JOINT7"}, std::vector<std::string>{"CHEST_JOINT1","LARM_JOINT7"}, std::vector<std::string>{"HEAD_JOINT1","LARM_JOINT7"}, std::vector<std::string>{"RARM_JOINT0","LARM_JOINT7"}, std::vector<std::string>{"RARM_JOINT2","LARM_JOINT7"}, std::vector<std::string>{"RARM_JOINT3","LARM_JOINT7"}, std::vector<std::string>{"RARM_JOINT4","LARM_JOINT7"}, std::vector<std::string>{"RARM_JOINT5","LARM_JOINT7"}, std::vector<std::string>{"RARM_JOINT7","LARM_JOINT7"}, std::vector<std::string>{"LARM_JOINT7","WAIST"}, std::vector<std::string>{"RLEG_JOINT2","RARM_JOINT7"}, std::vector<std::string>{"RLEG_JOINT3","RARM_JOINT7"}, std::vector<std::string>{"RLEG_JOINT5","RARM_JOINT7"}, std::vector<std::string>{"LLEG_JOINT2","RARM_JOINT7"}, std::vector<std::string>{"LLEG_JOINT3","RARM_JOINT7"}, std::vector<std::string>{"LLEG_JOINT5","RARM_JOINT7"}, std::vector<std::string>{"CHEST_JOINT1","RARM_JOINT7"}, std::vector<std::string>{"HEAD_JOINT1","RARM_JOINT7"}, std::vector<std::string>{"RARM_JOINT7","LARM_JOINT0"}, std::vector<std::string>{"RARM_JOINT7","LARM_JOINT2"}, std::vector<std::string>{"RARM_JOINT7","LARM_JOINT3"}, std::vector<std::string>{"RARM_JOINT7","LARM_JOINT4"}, std::vector<std::string>{"RARM_JOINT7","LARM_JOINT5"}, std::vector<std::string>{"RARM_JOINT7","WAIST"}, std::vector<std::string>{"CHEST_JOINT2","RARM_JOINT3"}, std::vector<std::string>{"CHEST_JOINT2","RARM_JOINT4"}, std::vector<std::string>{"CHEST_JOINT2","RARM_JOINT5"}, std::vector<std::string>{"CHEST_JOINT2","RARM_JOINT6"}, std::vector<std::string>{"CHEST_JOINT2","RARM_JOINT7"}, std::vector<std::string>{"CHEST_JOINT2","LARM_JOINT3"}, std::vector<std::string>{"CHEST_JOINT2","LARM_JOINT4"}, std::vector<std::string>{"CHEST_JOINT2","LARM_JOINT5"}, std::vector<std::string>{"CHEST_JOINT2","LARM_JOINT6"}, std::vector<std::string>{"CHEST_JOINT2","LARM_JOINT7"}/*, std::vector<std::string>{"CHEST_JOINT2","LARM_JOINT2"}, std::vector<std::string>{"CHEST_JOINT2","RARM_JOINT2}*/ // JAXON_JVRCは肩周りで干渉する
       };
-      std::unordered_map<cnoid::LinkPtr, std::shared_ptr<btConvexShape> > collisionModels;
-      for(int i=0;i<robot->numLinks();i++){
-        collisionModels[robot->link(i)] = choreonoid_bullet::convertToBulletModel(robot->link(i)->collisionShape());
-      }
 
       for(int i=0;i<pairs.size();i++){
         std::shared_ptr<ik_constraint2_bullet::BulletCollisionConstraint> constraint = std::make_shared<ik_constraint2_bullet::BulletCollisionConstraint>();
@@ -148,15 +178,35 @@ namespace cwcp_sample{
     }
 
     // reachability
-    for (int i=0; i<robot->numLinks(); i++) {
-      if(std::find(contactableLinkNames.begin(),contactableLinkNames.end(),robot->link(i)->name()) == contactableLinkNames.end()) continue;
-      std::shared_ptr<ik_constraint2_distance_field::DistanceFieldCollisionConstraint> constraint = std::make_shared<ik_constraint2_distance_field::DistanceFieldCollisionConstraint>();
-      constraint->A_link() = robot->link(i);
-      constraint->field() = param->field;
-      constraint->tolerance() = 0.3;
+    for (int i=0; i<contactableLinkNames.size(); i++) {
+      if (!robot->link(contactableLinkNames[i])) continue;
+      std::shared_ptr<ik_constraint2_or_keep_collision::ORKeepCollisionConstraint> constraint = std::make_shared<ik_constraint2_or_keep_collision::ORKeepCollisionConstraint>();
+      std::shared_ptr<ik_constraint2_distance_field::DistanceFieldCollisionConstraint> sdfConstraint = std::make_shared<ik_constraint2_distance_field::DistanceFieldCollisionConstraint>();
+      sdfConstraint->A_link() = robot->link(contactableLinkNames[i]);
+      sdfConstraint->field() = param->field;
+      sdfConstraint->tolerance() = 0.3;
       //          constraint->precision() = 0.01;
-      constraint->ignoreDistance() = 0.5;
-      constraint->invert() = true;
+      sdfConstraint->ignoreDistance() = 0.5;
+      sdfConstraint->invert() = true;
+      constraint->A_link() = sdfConstraint->A_link();
+      constraint->collisionConstraints().push_back(sdfConstraint);
+      for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
+        if ((*it) == robot) continue;
+        for(int j=0;j<(*it)->numLinks();j++){
+          if ((*it)->link(j)->name() == "floor") continue; // floorはdistance fieldを、rWall, lWallはbulletを使う
+          std::shared_ptr<ik_constraint2_bullet::BulletCollisionConstraint> bulletConstraint = std::make_shared<ik_constraint2_bullet::BulletCollisionConstraint>();
+          bulletConstraint->A_link() = robot->link(contactableLinkNames[i]);
+          bulletConstraint->B_link() = (*it)->link(j);
+          bulletConstraint->A_link_bulletModel() = bulletConstraint->A_link();
+          bulletConstraint->A_bulletModel().push_back(collisionModels[bulletConstraint->A_link()]);
+          bulletConstraint->B_link_bulletModel() = bulletConstraint->B_link();
+          bulletConstraint->B_bulletModel().push_back(collisionModels[bulletConstraint->B_link()]);
+          bulletConstraint->tolerance() = 0.3;
+          bulletConstraint->ignoreDistance() = 0.5;
+          bulletConstraint->invert() = true;
+          constraint->collisionConstraints().push_back(bulletConstraint);
+        }
+      }
       constraint->updateBounds();
       param->reachabilityConstraints.push_back(constraint);
     }

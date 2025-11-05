@@ -5,12 +5,12 @@ namespace cwcp {
   std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > generateKeepScfrConstraints(const std::shared_ptr<CWCPParam>& param) {
     // reachabilityConstraintのうち、隣接リンクの凸法に含まれる点は接触不可能とする. 足裏が地面に触れるときに脛も触れるとされては困るため. こうすると逆にリンク間の接合点(例:肘)で接触ができなくなる
     for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
-      for (int i=0; i<(*it)->numLinks(); i++) {
-        calcIgnoreBoundingBox(param->reachabilityConstraints, (*it)->link(i), 3);
+      for (int l=0; l<(*it)->numLinks(); l++) {
+        calcIgnoreBoundingBox(param->reachabilityConstraints, (*it)->link(l), 3);
       }
     }
 
-    // ScfrConstraintはロボットのみを対象とし、reachabilityConstraintsの該当リンクもロボットのリンクであることが前提
+    // ScfrConstraintはロボットのみを対象とし、reachabilityConstraintsの該当リンクもロボットのリンクであることが前提. 必ずA_linkにすること
     // 操作物体はforward kinematics等のためparam->bodiesには含めるが、ここでのScfrConstraintには含めない. 接触リンクの質量を変更する等で対応すること
     std::set<cnoid::BodyPtr> active_bodies;
     for(int i=0;i<param->reachabilityConstraints.size();i++){
@@ -36,7 +36,7 @@ namespace cwcp {
     }
     return keepScfrConstraints;
   }
-  void calcIgnoreBoundingBox(const std::vector<std::shared_ptr<ik_constraint2_distance_field::DistanceFieldCollisionConstraint> >& constraints,
+  void calcIgnoreBoundingBox(const std::vector<std::shared_ptr<ik_constraint2_or_keep_collision::ORKeepCollisionConstraint> >& constraints,
                              const cnoid::LinkPtr link,
                              int level
                              ) {
@@ -46,21 +46,24 @@ namespace cwcp {
     cnoid::BoundingBox bbx;
     bool found = false;
     for (int i=0; i<constraints.size(); i++) {
-      if (constraints[i]->A_link() == link) continue;
-      if (std::find(targetLinks.begin(), targetLinks.end(), constraints[i]->A_link()) != targetLinks.end()) {
-        if (!found) {
-          found = true;
-          cnoid::SgMeshPtr mesh = convertToSgMesh(link->collisionShape());
-          if(mesh && (mesh->numTriangles() != 0)) {
-            mesh->updateBoundingBox();
-            bbx = mesh->boundingBox();
+      for (int j=0; j<constraints[i]->collisionConstraints().size(); j++) {
+        if (typeid(*(constraints[i]->collisionConstraints()[j]))!=typeid(ik_constraint2_distance_field::DistanceFieldCollisionConstraint)) continue;
+        if (constraints[i]->collisionConstraints()[j]->A_link() == link) continue;
+        if (std::find(targetLinks.begin(), targetLinks.end(), constraints[i]->collisionConstraints()[j]->A_link()) != targetLinks.end()) {
+          if (!found) {
+            found = true;
+            cnoid::SgMeshPtr mesh = convertToSgMesh(link->collisionShape());
+            if(mesh && (mesh->numTriangles() != 0)) {
+              mesh->updateBoundingBox();
+              bbx = mesh->boundingBox();
+            }
           }
+          ik_constraint2_distance_field::DistanceFieldCollisionConstraint::BoundingBox ignoreBoundingBox;
+          ignoreBoundingBox.parentLink = link;
+          ignoreBoundingBox.localPose.translation() = bbx.center();
+          ignoreBoundingBox.dimensions = bbx.max() - bbx.min();
+          std::static_pointer_cast<ik_constraint2_distance_field::DistanceFieldCollisionConstraint>(constraints[i]->collisionConstraints()[j])->ignoreBoundingBox().push_back(ignoreBoundingBox);
         }
-        ik_constraint2_distance_field::DistanceFieldCollisionConstraint::BoundingBox ignoreBoundingBox;
-        ignoreBoundingBox.parentLink = link;
-        ignoreBoundingBox.localPose.translation() = bbx.center();
-        ignoreBoundingBox.dimensions = bbx.max() - bbx.min();
-        constraints[i]->ignoreBoundingBox().push_back(ignoreBoundingBox);
       }
     }
 

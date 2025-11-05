@@ -9,7 +9,8 @@ namespace cwcp_sample{
     std::shared_ptr<cwcp::CWCPParam> param = std::make_shared<cwcp::CWCPParam>();
     generateWallWorld(obstacle, param);
 
-    generateJAXON(param);
+    cnoid::BodyPtr robot;
+    generateJAXON(robot, param);
 
     std::vector<double> initialPose;
     global_inverse_kinematics_solver::link2Frame(param->variables, initialPose);
@@ -17,9 +18,9 @@ namespace cwcp_sample{
     {
       // pitch < 90
       std::shared_ptr<ik_constraint2::RegionConstraint> constraint = std::make_shared<ik_constraint2::RegionConstraint>();
-      constraint->A_link() = (*param->bodies.begin())->rootLink();
+      constraint->A_link() = robot->rootLink();
       constraint->A_localpos().translation() = cnoid::Vector3(0.0,0.0,-0.1);
-      constraint->B_link() = (*param->bodies.begin())->rootLink();
+      constraint->B_link() = robot->rootLink();
       constraint->eval_link() = nullptr;
       constraint->weightR().setZero();
       constraint->C().resize(1,3);
@@ -35,8 +36,8 @@ namespace cwcp_sample{
     // goal
     {
       std::shared_ptr<ik_constraint2::PositionConstraint> constraint = std::make_shared<ik_constraint2::PositionConstraint>();
-      constraint->A_link() = (*param->bodies.begin())->rootLink();
-      constraint->B_localpos() = (*param->bodies.begin())->rootLink()->T();
+      constraint->A_link() = robot->rootLink();
+      constraint->B_localpos() = robot->rootLink()->T();
       constraint->B_localpos().translation() += cnoid::Vector3(0.5,0,0.5);
       constraint->weight() << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
       constraint->precision() = 1e-3;
@@ -52,8 +53,6 @@ namespace cwcp_sample{
     // setup viewer
     std::shared_ptr<choreonoid_viewer::Viewer> viewer = std::make_shared<choreonoid_viewer::Viewer>();
     for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) viewer->objects((*it));
-    viewer->objects(obstacle);
-
     viewer->drawObjects();
 
     std::vector<std::pair<std::vector<double>, std::vector<std::shared_ptr<cwcp::Contact> > > > path;

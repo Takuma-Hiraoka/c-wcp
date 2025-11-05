@@ -2,6 +2,7 @@
 
 #include <set>
 #include <ik_constraint2/ik_constraint2.h>
+#include <ik_constraint2_scfr/ik_constraint2_scfr.h>
 #include <ik_constraint2_distance_field/ik_constraint2_distance_field.h>
 #include <global_inverse_kinematics_solver/global_inverse_kinematics_solver.h>
 #include <prioritized_inverse_kinematics_solver2/prioritized_inverse_kinematics_solver2.h>
@@ -16,7 +17,7 @@ namespace cwcp {
     cnoid::LinkPtr projectLink = nullptr;
     std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > searchRegionConstraints;
     std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > constraints;
-    std::vector<std::shared_ptr<ik_constraint2_distance_field::DistanceFieldCollisionConstraint> > reachabilityConstraints; // TODO distance fieldとbullet collisionをまとめる
+    std::vector<std::shared_ptr<ik_constraint2_or_keep_collision::ORKeepCollisionConstraint> > reachabilityConstraints; // リンクごとにまとめてpush_backすること
     std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > nominals;
     std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > goals;
     std::vector<std::shared_ptr<Contact> > currentContactPoints;

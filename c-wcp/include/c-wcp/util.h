@@ -5,7 +5,7 @@
 
 namespace cwcp {
   std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > generateKeepScfrConstraints(const std::shared_ptr<CWCPParam>& param);
-  void calcIgnoreBoundingBox(const std::vector<std::shared_ptr<ik_constraint2_distance_field::DistanceFieldCollisionConstraint> >& constraints,
+  void calcIgnoreBoundingBox(const std::vector<std::shared_ptr<ik_constraint2_or_keep_collision::ORKeepCollisionConstraint> >& constraints,
                              const cnoid::LinkPtr link,
                              int level=1
                              ); // collisionConstraintについて、linkのlevel等親のリンクの干渉回避である場合、linkのBoundingBoxを追加する.
