@@ -1,0 +1,70 @@
+- git:
+    local-name: c-wcp
+    uri: https://github.com/Takuma-Hiraoka/c-wcp.git
+- git:
+    local-name: choreonoid
+    uri: https://github.com/choreonoid/choreonoid.git
+    version: release-2.1
+- git:
+    local-name: ik_solvers2
+    uri: https://github.com/Naoki-Hiraoka/ik_solvers2.git
+    version: 2.0
+- git:
+    local-name: qp_solvers
+    uri: https://github.com/Naoki-Hiraoka/qp_solvers.git
+- git:
+    uri: https://github.com/Naoki-Hiraoka/abseil_catkin.git
+    local-name: abseil_catkin
+- git:
+    local-name: prioritized_qp
+    uri: https://github.com/Naoki-Hiraoka/prioritized_qp.git
+- git:
+    local-name: choreonoid_viewer2
+    uri: https://github.com/Naoki-Hiraoka/choreonoid_viewer2.git
+    version: 2.0
+- git:
+    local-name: cddeigen
+    uri: https://github.com/Naoki-Hiraoka/cddeigen
+- git:
+    local-name: choreonoid_collision_tools2
+    uri: https://github.com/Naoki-Hiraoka/choreonoid_collision_tools2.git
+    version: 2.0
+- git:
+    local-name: qhulleigen
+    uri: https://github.com/Naoki-Hiraoka/qhulleigen.git
+- git:
+    local-name: collision_check_libraries
+    uri: https://github.com/Naoki-Hiraoka/collision_check_libraries.git
+- git:
+    local-name: lp_solvers
+    uri: https://github.com/Naoki-Hiraoka/lp_solvers.git
+    version: 1.0
+- git:
+    local-name: static_equilibuim_test
+    uri: https://github.com/Naoki-Hiraoka/static_equilibuim_test.git
+    version: 1.0
+- git:
+    local-name: moveit_extensions
+    uri: https://github.com/Naoki-Hiraoka/moveit_extensions.git
+    version: 1.0
+- git:
+    local-name: gik_solvers
+    uri: https://github.com/Naoki-Hiraoka/gik_solvers.git
+    version: 2.0
+- git:
+    local-name: ompl
+    uri: https://github.com/Naoki-Hiraoka/ompl.git
+    version: 1.6.0-fixed
+- git:
+    local-name: ompl_near_projection
+    uri: https://github.com/Naoki-Hiraoka/ompl_near_projection.git
+    version: 1.0
+- git:
+    local-name: ik_constraint2_scfr
+    uri: https://github.com/Takuma-Hiraoka/ik_constraint2_scfr.git
+- git:
+    local-name: trajectory_optimizer
+    uri: https://github.com/Takuma-Hiraoka/trajectory_optimizer.git
+- git:
+    uri: https://github.com/start-jsk/rtmros_choreonoid
+    local-name: rtm-ros-robotics/rtmros_choreonoid
