@@ -14,7 +14,7 @@ namespace cwcp_sample{
     robot = bodyLoader.load(ros::package::getPath("jvrc_models") + "/JAXON_JVRC/JAXON_JVRCmain.wrl");
     robot->setName("JAXON");
     if(!robot) std::cerr << "!robot" << std::endl;
-    param->bodies.insert(robot);
+    param->bodies.push_back(robot);
     std::vector<std::string> contactableLinkNames{
     "LARM_JOINT7",
     "RARM_JOINT7",
@@ -105,11 +105,11 @@ namespace cwcp_sample{
     for(int i=0;i<robot->numLinks();i++){
       collisionModels[robot->link(i)] = choreonoid_bullet::convertToBulletModel(robot->link(i)->collisionShape());
     }
-    for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
-      if ((*it) == robot) continue;
-      for(int i=0;i<(*it)->numLinks();i++){
-        if ((*it)->link(i)->name() == "floor") continue; // floorはdistance fieldを、rWall, lWallはbulletを使う
-        collisionModels[(*it)->link(i)] = choreonoid_bullet::convertToBulletModel((*it)->link(i)->collisionShape());
+    for(int b=0; b<param->bodies.size(); b++) {
+      if (param->bodies[b] == robot) continue;
+      for(int i=0;i<param->bodies[b]->numLinks();i++){
+        if (param->bodies[b]->link(i)->name() == "floor") continue; // floorはdistance fieldを、rWall, lWallはbulletを使う
+        collisionModels[param->bodies[b]->link(i)] = choreonoid_bullet::convertToBulletModel(param->bodies[b]->link(i)->collisionShape());
       }
     }
 
@@ -137,13 +137,13 @@ namespace cwcp_sample{
         constraint->updateBounds();
         param->constraints.push_back(constraint);
       }
-      for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
-        if ((*it) == robot) continue;
-        for(int j=0;j<(*it)->numLinks();j++){
-          if ((*it)->link(j)->name() == "floor") continue; // floorはdistance fieldを、rWall, lWallはbulletを使う
+      for(int b=0; b<param->bodies.size(); b++) {
+        if (param->bodies[b] == robot) continue;
+        for(int j=0;j<param->bodies[b]->numLinks();j++){
+          if (param->bodies[b]->link(j)->name() == "floor") continue; // floorはdistance fieldを、rWall, lWallはbulletを使う
           std::shared_ptr<ik_constraint2_bullet::BulletCollisionConstraint> constraint = std::make_shared<ik_constraint2_bullet::BulletCollisionConstraint>();
           constraint->A_link() = robot->link(i);
-          constraint->B_link() = (*it)->link(j);
+          constraint->B_link() = param->bodies[b]->link(j);
           constraint->A_link_bulletModel() = constraint->A_link();
           constraint->A_bulletModel().push_back(collisionModels[constraint->A_link()]);
           constraint->B_link_bulletModel() = constraint->B_link();
@@ -190,13 +190,13 @@ namespace cwcp_sample{
       sdfConstraint->invert() = true;
       constraint->A_link() = sdfConstraint->A_link();
       constraint->collisionConstraints().push_back(sdfConstraint);
-      for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
-        if ((*it) == robot) continue;
-        for(int j=0;j<(*it)->numLinks();j++){
-          if ((*it)->link(j)->name() == "floor") continue; // floorはdistance fieldを、rWall, lWallはbulletを使う
+      for(int b=0; b<param->bodies.size(); b++) {
+        if (param->bodies[b] == robot) continue;
+        for(int j=0;j<param->bodies[b]->numLinks();j++){
+          if (param->bodies[b]->link(j)->name() == "floor") continue; // floorはdistance fieldを、rWall, lWallはbulletを使う
           std::shared_ptr<ik_constraint2_bullet::BulletCollisionConstraint> bulletConstraint = std::make_shared<ik_constraint2_bullet::BulletCollisionConstraint>();
           bulletConstraint->A_link() = robot->link(contactableLinkNames[i]);
-          bulletConstraint->B_link() = (*it)->link(j);
+          bulletConstraint->B_link() = param->bodies[b]->link(j);
           bulletConstraint->A_link_bulletModel() = bulletConstraint->A_link();
           bulletConstraint->A_bulletModel().push_back(collisionModels[bulletConstraint->A_link()]);
           bulletConstraint->B_link_bulletModel() = bulletConstraint->B_link();

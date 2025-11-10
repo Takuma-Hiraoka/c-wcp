@@ -52,7 +52,7 @@ namespace cwcp_sample{
 
     // setup viewer
     std::shared_ptr<choreonoid_viewer::Viewer> viewer = std::make_shared<choreonoid_viewer::Viewer>();
-    for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) viewer->objects((*it));
+    for(int b=0; b<param->bodies.size(); b++) viewer->objects(param->bodies[b]);
     viewer->drawObjects();
 
     std::vector<std::pair<std::vector<double>, std::vector<std::shared_ptr<cwcp::Contact> > > > path;
@@ -61,9 +61,9 @@ namespace cwcp_sample{
       while (true) {
         for(int i=0;i<path.size();i++){
           global_inverse_kinematics_solver::frame2Link(path.at(i).first,param->variables);
-          for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
-            (*it)->calcForwardKinematics(false);
-            (*it)->calcCenterOfMass();
+          for(int b=0; b<param->bodies.size(); b++) {
+            param->bodies[b]->calcForwardKinematics(false);
+            param->bodies[b]->calcCenterOfMass();
           }
           std::vector<cnoid::SgNodePtr> markers;
           for (int j=0;j<path.at(i).second.size();j++) {

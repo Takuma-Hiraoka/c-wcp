@@ -1,6 +1,5 @@
 #pragma once
 
-#include <set>
 #include <ik_constraint2/ik_constraint2.h>
 #include <ik_constraint2_scfr/ik_constraint2_scfr.h>
 #include <ik_constraint2_distance_field/ik_constraint2_distance_field.h>
@@ -12,7 +11,7 @@
 namespace cwcp {
   class CWCPParam {
   public:
-    std::set<cnoid::BodyPtr> bodies;
+    std::vector<cnoid::BodyPtr> bodies;
     std::vector<cnoid::LinkPtr> variables;
     cnoid::LinkPtr projectLink = nullptr;
     std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > searchRegionConstraints;

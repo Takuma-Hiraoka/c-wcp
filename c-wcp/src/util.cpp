@@ -4,9 +4,9 @@
 namespace cwcp {
   std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > generateKeepScfrConstraints(const std::shared_ptr<CWCPParam>& param) {
     // reachabilityConstraintのうち、隣接リンクの凸法に含まれる点は接触不可能とする. 足裏が地面に触れるときに脛も触れるとされては困るため. こうすると逆にリンク間の接合点(例:肘)で接触ができなくなる
-    for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
-      for (int l=0; l<(*it)->numLinks(); l++) {
-        calcIgnoreBoundingBox(param->reachabilityConstraints, (*it)->link(l), 3);
+    for(int i=0; i<param->bodies.size(); i++) {
+      for (int l=0; l<param->bodies[i]->numLinks(); l++) {
+        calcIgnoreBoundingBox(param->reachabilityConstraints, param->bodies[i]->link(l), 3);
       }
     }
 

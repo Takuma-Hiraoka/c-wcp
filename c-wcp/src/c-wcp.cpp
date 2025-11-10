@@ -91,9 +91,9 @@ namespace cwcp {
     for (int i=0; i<path->size(); i++) {
       outputPath[i].first = path->at(i);
       global_inverse_kinematics_solver::frame2Link(path->at(i),param->variables);
-      for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
-        (*it)->calcForwardKinematics(false);
-        (*it)->calcCenterOfMass();
+      for (int b=0; b<param->bodies.size(); b++) {
+        param->bodies[b]->calcForwardKinematics(false);
+        param->bodies[b]->calcCenterOfMass();
       }
       std::vector<std::shared_ptr<Contact> >contacts;
       for (int j=0; j<param->reachabilityConstraints.size(); j++) {
@@ -115,9 +115,9 @@ namespace cwcp {
     }
 
     global_inverse_kinematics_solver::frame2Link(initialPose,param->variables);
-    for(std::set<cnoid::BodyPtr>::iterator it=param->bodies.begin(); it != param->bodies.end(); it++) {
-      (*it)->calcForwardKinematics(false);
-      (*it)->calcCenterOfMass();
+    for (int b=0; b<param->bodies.size(); b++) {
+      param->bodies[b]->calcForwardKinematics(false);
+      param->bodies[b]->calcCenterOfMass();
     }
     return true;
 
