@@ -52,4 +52,7 @@ namespace cwcp {
   };
   bool solveCWCP(const std::shared_ptr<CWCPParam>& param,
                  std::vector<std::pair<std::vector<double>, std::vector<std::shared_ptr<Contact> > > >& outputPath);
+  bool generateKeyPose(const std::shared_ptr<CWCPParam>& param,
+                       const std::vector<std::pair<std::vector<double>, std::vector<std::shared_ptr<Contact> > > >& guidePath,
+                       std::vector<std::pair<std::vector<double>, std::vector<std::shared_ptr<Contact> > > >& keyPosePath);
 }
