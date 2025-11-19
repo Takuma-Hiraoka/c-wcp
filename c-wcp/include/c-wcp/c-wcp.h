@@ -38,8 +38,8 @@ namespace cwcp {
       gikParam.threads = 12;
       gikParam.goalBias = 0.2;
       gikParam.projectCellSize = 0.2;
-      gikParam.pikParam.we = 3e1;
-      gikParam.pikParam.wmax = 3e0;
+      gikParam.pikParam.we = 5e1;
+      gikParam.pikParam.wmax = 5e0;
       gikParam.pikParam.maxIteration = 100;
       gikParam.pikParam.minIteration = 20;
       gikParam.pikParam.checkFinalState = true;

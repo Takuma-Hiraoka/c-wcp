@@ -63,14 +63,13 @@ namespace cwcp {
                                                           );
     }
 
-    std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > rejections{keepScfrConstraints};
     param->gikParam.projectLink.push_back(param->projectLink);
     std::shared_ptr<std::vector<std::vector<double> > > path = std::make_shared<std::vector<std::vector<double> > >();
     if(!global_inverse_kinematics_solver::solveGIK(param->variables,
                                                    constraints,
                                                    param->goals,
                                                    param->nominals,
-                                                   rejections,
+                                                   constraints.back(),
                                                    param->gikParam,
                                                    path
                                                    )){
@@ -127,27 +126,27 @@ namespace cwcp {
                        const std::vector<std::pair<std::vector<double>, std::vector<std::shared_ptr<Contact> > > >& guidePath,
                        std::vector<std::pair<std::vector<double>, std::vector<std::shared_ptr<Contact> > > >& keyPosePath) {
     keyPosePath.clear();
+    std::vector<std::vector<double> > tolerancess;
+    std::vector<std::vector<double> > precisionss;
+    int convergedLevel = param->pikParam.satisfiedConvergeLevel;
+    for(int r=0;r<param->reachabilityConstraints.size();r++){
+      std::vector<double> tolerances;
+      std::vector<double> precisions;
+      for (int c=0; c<param->reachabilityConstraints[r]->collisionConstraints().size(); c++) {
+        tolerances.push_back(param->reachabilityConstraints[r]->collisionConstraints()[c]->tolerance());
+        precisions.push_back(param->reachabilityConstraints[r]->collisionConstraints()[c]->precision());
+        param->reachabilityConstraints[r]->collisionConstraints()[c]->tolerance() = 0.05;
+        param->reachabilityConstraints[r]->collisionConstraints()[c]->precision() = 1e10; // always satisfied
+      }
+      tolerancess.push_back(tolerances);
+      precisionss.push_back(precisions);
+    }
+
     for (int i=0; i<guidePath.size(); i++) {
       std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > nominals;
-      unsigned int nominalIdx=0;
-      for (int v=0; v<param->variables.size(); v++) {
-        if (param->variables[v]->isRevoluteJoint() || param->variables[v]->isPrismaticJoint()) {
-          std::shared_ptr<ik_constraint2::JointAngleConstraint> constraint = std::make_shared<ik_constraint2::JointAngleConstraint>();
-          constraint->joint() = param->variables[v];
-          constraint->targetq() = guidePath[i].first[nominalIdx];
-          constraint->precision() = 1e10; // always satisfied
-          nominals.push_back(constraint);
-          nominalIdx += 1;
-        } else if (param->variables[v]->isFreeJoint()) {
-          std::shared_ptr<ik_constraint2::PositionConstraint> constraint = std::make_shared<ik_constraint2::PositionConstraint>();
-          constraint->A_link() = param->variables[v];
-          cnoid::Isometry3 pose;
-          pose.translation() = cnoid::Vector3(guidePath[i].first[nominalIdx+0], guidePath[i].first[nominalIdx+1], guidePath[i].first[nominalIdx+2]);
-          pose.linear() = cnoid::Quaternion(guidePath[i].first[nominalIdx+6], guidePath[i].first[nominalIdx+3], guidePath[i].first[nominalIdx+4], guidePath[i].first[nominalIdx+5]).toRotationMatrix();
-          constraint->B_localpos() = pose;
-          constraint->precision() = 1e10; // always satisfied
-          nominals.push_back(constraint);
-          nominalIdx += 7;
+      for(int r=0;r<param->reachabilityConstraints.size();r++) {
+        for (int c=0; c<guidePath[i].second.size(); c++) {
+          if (guidePath[i].second[c]->c1.link == param->reachabilityConstraints[r]->A_link()) nominals.push_back(param->reachabilityConstraints[r]);
         }
       }
       global_inverse_kinematics_solver::frame2Link(guidePath[i].first, param->variables);
@@ -173,17 +172,7 @@ namespace cwcp {
       std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> > Cs;
       std::vector<cnoid::VectorX> dls;
       std::vector<cnoid::VectorX> dus;
-      std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > constraints1;
       for (int c=0; c<guidePath[i].second.size(); c++) {
-        std::shared_ptr<ik_constraint2::PositionConstraint> constraint = std::make_shared<ik_constraint2::PositionConstraint>();
-        constraint->A_link() = guidePath[i].second[c]->c1.link;
-        constraint->A_localpos() = guidePath[i].second[c]->c1.localPose;
-        constraint->B_link() = guidePath[i].second[c]->c2.link;
-        constraint->B_localpos() = guidePath[i].second[c]->c2.localPose;
-        constraint->B_localpos().translation() += constraint->B_localpos().rotation() * cnoid::Vector3(0,0,0.03);
-        constraint->eval_link() = nullptr;
-        constraint->weight() << 1.0, 1.0, 1.0, 0.0, 0.0, 0.0;
-        constraints1.push_back(constraint);
         poses.push_back(guidePath[i].second[c]->c2.localPose);
         As.emplace_back(0,6);
         bs.emplace_back(0);
@@ -203,7 +192,7 @@ namespace cwcp {
         cnoid::VectorX dl = Eigen::VectorXd::Zero(11);
         dls.push_back(dl);
         cnoid::VectorX du = 1e10 * Eigen::VectorXd::Ones(11);
-        du[0] = 20000.0;
+        du[0] = 2000.0;
         dus.push_back(du);
       }
       scfrConstraint->poses() = poses;
@@ -212,37 +201,26 @@ namespace cwcp {
       scfrConstraint->Cs() = Cs;
       scfrConstraint->dls() = dls;
       scfrConstraint->dus() = dus;
+      scfrConstraint->SCFRParam().eps = 0.2;
+      scfrConstraint->SCFRParam().lpTolerance = 1e-7;
+      scfrConstraint->maxCError() = 0.1;
       constraints0.push_back(scfrConstraint);
       bool solved = false;
-      std::vector<std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > > constraints{constraints0, constraints1, nominals};
+      std::vector<std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > > constraints{constraints0, nominals};
       std::vector<std::shared_ptr<prioritized_qp_base::Task> > prevTasks;
       solved  =  prioritized_inverse_kinematics_solver2::solveIKLoop(param->variables,
                                                                      constraints,
                                                                      prevTasks,
                                                                      param->pikParam
                                                                      );
-      if(!solved) {
-        std::vector<std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > > gikConstraints{constraints0};
-        param->gikParam.projectLink.resize(1);
-        param->gikParam.projectLink[0] = guidePath[i].second[0]->c1.link;
-        param->gikParam.projectLocalPose = guidePath[i].second[0]->c1.localPose;
-        for(int v=0;v<param->variables.size();v++){
-          if(param->variables[v]->isRevoluteJoint() || param->variables[v]->isPrismaticJoint()) {
-            param->variables[v]->q() = std::max(std::min(param->variables[v]->q(),param->variables[v]->q_upper()),param->variables[v]->q_lower());
-          }
-        }
-        std::shared_ptr<std::vector<std::vector<double> > > tmpPath = std::make_shared<std::vector<std::vector<double> > >();
-        solved = global_inverse_kinematics_solver::solveGIK(param->variables,
-                                                            gikConstraints,
-                                                            constraints1,
-                                                            nominals,
-                                                            param->gikParam,
-                                                            tmpPath);
-        if (!solved) return false;
+      if (!solved) { // 幾何形状の問題から単に位距離を近づけるだけでは重心制約等が解けなくなる可能性がある. このため解けなかった場合は諦めてガイドパスをそのまま使う.
+        keyPosePath.push_back(guidePath[i]);
+      } else {
+        std::vector<double> frame;
+        global_inverse_kinematics_solver::link2Frame(param->variables, frame);
+        keyPosePath.push_back(std::pair<std::vector<double>, std::vector<std::shared_ptr<Contact> > >(frame, guidePath[i].second));
       }
-      std::vector<double> frame;
-      global_inverse_kinematics_solver::link2Frame(param->variables, frame);
-      keyPosePath.push_back(std::pair<std::vector<double>, std::vector<std::shared_ptr<Contact> > >(frame, guidePath[i].second));
+
     }
 
     if (param->debugLevel >= 1) std::cerr << "[generateKeyPose] succeeded." << std::endl;
@@ -251,6 +229,15 @@ namespace cwcp {
       param->bodies[b]->calcForwardKinematics(false);
       param->bodies[b]->calcCenterOfMass();
     }
+
+    for(int r=0;r<param->reachabilityConstraints.size();r++){
+      for (int c=0; c<param->reachabilityConstraints[r]->collisionConstraints().size(); c++) {
+        param->reachabilityConstraints[r]->collisionConstraints()[c]->tolerance() = tolerancess[r][c];
+        param->reachabilityConstraints[r]->collisionConstraints()[c]->precision() = precisionss[r][c];
+      }
+    }
+    param->pikParam.satisfiedConvergeLevel = convergedLevel;
+
     return true;
   }
 
