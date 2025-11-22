@@ -101,7 +101,7 @@ namespace cwcp {
           std::shared_ptr<Contact> contact = std::make_shared<Contact>();
           contact->c1.link = param->reachabilityConstraints[j]->A_link();
           contact->c1.localPose.translation() =  param->reachabilityConstraints[j]->A_currentLocalp();
-          contact->c2.link = nullptr;
+          contact->c2.link = param->reachabilityConstraints[j]->B_link();
           contact->c2.localPose.translation() =  param->reachabilityConstraints[j]->B_currentLocalp();
           cnoid::Vector3d z_axis = param->reachabilityConstraints[j]->currentDirection();
           cnoid::Vector3d x_axis = (z_axis==cnoid::Vector3d::UnitY() || z_axis==-cnoid::Vector3d::UnitY()) ? cnoid::Vector3d::UnitZ() : cnoid::Vector3d::UnitY().cross(z_axis);
