@@ -46,6 +46,7 @@ namespace cwcp {
       gikParam.pikParam.calcVelocity = false;
       gikParam.pikParam.convergeThre = 5e-2;
       gikParam.pikParam.pathOutputLoop = 2;
+      gikParam.modelMutex = std::make_shared<std::mutex>();
       pikParam = gikParam.pikParam;
       toParam.shortcutThre=4e-2;
     };
