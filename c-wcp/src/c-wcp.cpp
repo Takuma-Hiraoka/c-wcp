@@ -32,13 +32,6 @@ namespace cwcp {
     std::vector<std::shared_ptr<ik_constraint2::IKConstraint>> keepScfrConstraints = generateKeepScfrConstraints(param);
     constraints.back().insert(constraints.back().end(), keepScfrConstraints.begin(), keepScfrConstraints.end());
 
-    for (int i=0; i<constraints.size(); i++) {
-      for (int j=0; j<constraints[i].size(); j++) {
-        constraints[i][j]->debugLevel() = 0;
-        constraints[i][j]->updateBounds();
-      }
-    }
-
     // まず今触れている接触を僅かに離す. 初期状態をsatisfiedにするため.
     {
       std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > breakConstraints;
@@ -51,6 +44,7 @@ namespace cwcp {
         constraint->B_localpos() = param->currentContactPoints[i]->c2.localPose;
         constraint->B_localpos().translation() += param->currentContactPoints[i]->c2.localPose.linear() * cnoid::Vector3(0,0,param->initialBreakHeight);
         constraint->eval_link() = nullptr;
+        constraint->precision() = 1e10;
         breakConstraints.push_back(constraint);
       }
       std::vector<std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > > preConstraints = constraints;
@@ -61,6 +55,16 @@ namespace cwcp {
                                                           prevTasks,
                                                           param->pikParam
                                                           );
+      if ((param->debugLevel > 0) && param->pikParam.viewer) param->pikParam.viewer->drawObjects();
+      if (param->debugLevel > 0) {
+        for ( int i=0; i<preConstraints.size(); i++ ) {
+          for ( int j=0; j<preConstraints[i].size(); j++ ) {
+            preConstraints[i][j]->updateBounds();
+            std::cerr << "preConstraint " << i << " " << j << " : "<< preConstraints[i][j]->isSatisfied() << std::endl;
+            preConstraints[i][j]->debugLevel() = 0;
+          }
+        }
+      }
     }
 
     param->gikParam.projectLink.push_back(param->projectLink);
